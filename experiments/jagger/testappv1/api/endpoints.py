@@ -1,16 +1,17 @@
 # endpoints.py
-from fastapi import APIRouter
-from pydantic import BaseModel
-from testappv1.cache.semantic_cache import handle_query
+from fastapi import APIRouter, HTTPException
+from ..models.models import QueryRequest, QueryResponse
+from ..cache.semantic_cache import SemanticCache
 
 router = APIRouter()
+semantic_cache = SemanticCache()
 
-# Pydantic models
-class QueryRequest(BaseModel):
-    query: str
-
-class QueryResponse(BaseModel):
-    response: str
-    cached: bool
+@router.post("/query", response_model=QueryResponse)
+async def handle_query(request: QueryRequest):
+    try:
+        response = semantic_cache.get_response(request.query)
+        return QueryResponse(response=response)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
