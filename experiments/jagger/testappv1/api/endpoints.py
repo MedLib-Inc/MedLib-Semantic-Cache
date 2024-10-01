@@ -13,8 +13,4 @@ class QueryResponse(BaseModel):
     response: str
     cached: bool
 
-@router.post("/query", response_model=QueryResponse)
-async def query_endpoint(request: QueryRequest):
-    # Call semantic cache logic
-    result = await handle_query(request.query)
-    return QueryResponse(response=result['result'], cached=result['cached'])
+
