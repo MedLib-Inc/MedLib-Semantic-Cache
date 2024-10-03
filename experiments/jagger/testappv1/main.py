@@ -1,13 +1,12 @@
 # main.py
 from fastapi import FastAPI
-from testappv1.api import endpoints
+from testappv1.api.endpoints import router
 
-# Initialize app
-app = FastAPI(title="Jagger Test Cache v1")
+app = FastAPI()
 
-app.include_router(endpoints.router)
+app.include_router(router)
 
-# Simple health check
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+# Basic router for testing
+@app.get("/")
+async def root():
+    return {"message": "FastAPI is running"}

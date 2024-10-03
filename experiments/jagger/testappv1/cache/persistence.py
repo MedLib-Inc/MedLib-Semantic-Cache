@@ -1,17 +1,26 @@
 # persistence.py
 import chromadb
-from chromadb.config import Settings
+import uuid
 
-class Persistence:
-    def __init__(self):
-        #self.client = chromadb.Client(chroma_db_impl="duckdb+parquet", persist_directory="chroma_storage")
-        #self.client = chromadb.Client(persist_directory="chroma_storage")
-        self.client = chromadb.Client()
-        self.collection = self.client.create_collection("responses")
-    
-    def add_response(self, query, response, embedding):
-        self.collection.add(document=[response], embeddings=[embedding], metadatas=[{"query": query}])
+client = chromadb.PersistentClient(path="chroma_storage")
 
-    def get_response(self, query):
-        return "Response from persistence"
+collection = client.get_or_create_collection("query_embeddings")
+
+def store_embedding(query: str, embedding: list):
+
+    unique_id = str(uuid.uuid4())
+
+    collection.add(
+        ids=[unique_id],
+        documents=[query],
+        embeddings=[embedding]
+    )
+    return {"status": "embedding stored", "id":unique_id}
+
+def search_similar_queries(embedding: list, n_results: int = 5):
+    results = collection.query(
+        query_embeddings=[embedding],
+        n_results=n_results
+    )
+    return results
 
