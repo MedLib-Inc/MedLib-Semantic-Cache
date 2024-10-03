@@ -1,0 +1,51 @@
+# Virtualenv and Python-specific files
+# Ignore virtual environment files and folders
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
+.Python
+[Bb]in/
+[Ii]nclude/
+[Ll]ib/
+[Ll]ib64/
+[Ll]ocal/
+[Ss]cripts/
+.venv/
+venv/
+env/
+pyvenv.cfg
+pip-selfcheck.json
+__pycache__/
+
+# Ignore Python bytecode and compiled files
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+*.manifest
+*.spec
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore environment and secret files
+.env
+.env.*
+*.env
+
+# Ignore IDE and editor settings (VSCode, PyCharm, etc.)
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Ignore log files
+*.log
+
+# Ignore OS-specific files
+.DS_Store         # macOS Finder
+Thumbs.db         # Windows thumbnails
+desktop.ini       # Windows system file
