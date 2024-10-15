@@ -1,5 +1,4 @@
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
 class SemanticCache:
     def __init__(self, threshold=0.9):
@@ -51,7 +50,7 @@ class SemanticCache:
 
         # Iterate over cached items to find a match
         for cached_query, cached_embedding, cached_response in self.cache:
-            similarity = cosine_similarity([embedding], [cached_embedding])[0][0]
+            #similarity = cosine_similarity([embedding], [cached_embedding])[0][0]
             if similarity >= self.threshold:
                 return cached_response
 
