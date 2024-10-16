@@ -28,6 +28,11 @@ build/
 *.manifest
 *.spec
 
+# Ignore ChromaDB storage files
+chromadb_storage/
+*.sqlite3
+*.bin
+
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
