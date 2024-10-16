@@ -1,9 +1,9 @@
-from sentence_transformers import SentenceTransformer
+from .persistence import Chroma
 
 class SemanticCache:
     def __init__(self, threshold=0.9):
         """
-        Initializes the semantic cache with an embedding model and a similarity threshold
+        Initializes the semantic cache with ChromaDB and a similarity threshold
         
         Usage in API:
         -------------
@@ -13,15 +13,8 @@ class SemanticCache:
 
         semantic_cache = SemanticCache()
         """
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.persistence = Chroma()
         self.threshold = threshold
-        self.cache = []  # Temporarily using in-memory list to store (query, embedding, response) tuples
-
-    def get_embedding(self, query):
-        """
-        Convert a query to its embedding using SentenceTransformers
-        """
-        return self.model.encode([query])[0]
 
     def add_to_cache(self, query, response):
         """
@@ -39,22 +32,20 @@ class SemanticCache:
                semantic_cache.add_to_cache(query, response)
                # Continue with your logic to store in-memory or persist to file.
         """
-        embedding = self.get_embedding(query)
-        self.cache.append((query, embedding, response))  # Temporary in-memory cache
+        # Store in ChromaDB
+        self.persistence.add_to_db(query, response)
 
     def check_cache(self, query):
         """
         Check if a semantically similar response is in the cache.
         """
-        embedding = self.get_embedding(query)
+        # Query ChromaDB for similar response
+        result = self.persistence.query_db(query)
 
-        # Iterate over cached items to find a match
-        for cached_query, cached_embedding, cached_response in self.cache:
-            #similarity = cosine_similarity([embedding], [cached_embedding])[0][0]
-            if similarity >= self.threshold:
-                return cached_response
+        if result:
+            return result # Return cached response if found
 
-        # If no similar query is found
+        # Return None if no match is found
         return None
 
     def ask(self, query):
@@ -74,9 +65,10 @@ class SemanticCache:
         cached_response = self.check_cache(query)
 
         if cached_response:
+            # Return cached response if found
             return cached_response
 
-        # If not found in the cache, simulate a call to the LLM (or external system)
+        # If not found in the cache, simulate a calling the LLM
         response = self.query_external(query)
 
         # Add the new response to the cache

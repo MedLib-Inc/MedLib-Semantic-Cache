@@ -5,16 +5,6 @@ class Chroma:
     def __init__(self, collection_name="query_cache"):
         """
         Initilizes the persistent cache
-
-        Import the Chroma class into the `semantic_cache.py` file:
-        from .persistence import Chroma
-        There is also now no need to import sentence_transformers or sklearn
-        since ChromaDB can handle that
-        
-        In sematic_cache.py, `__init__()`:
-        ----------------
-        Replace: self.cache = []
-        With: self.persistence = ChromaPersistence()
         """
 
         # ChromaDB client
@@ -33,45 +23,35 @@ class Chroma:
     def add_to_db(self, query, response):
         """
         Adds a query, embedding, and response to the ChromaDB collection
-        
-        In semantic_cache.py, 'add_to_cache():
-        ---------------------
-        Replace: self.cache.append((query, embedding, response))
-        With: self.persistence.add_to_db(query, response)
         """
-        embedding = self.get_embedding(query)
-
-        # Add document to ChromaDB
-        self.collection.add(
-            documents=[response],
-            metadatas=[{"query": query}],
-            ids=[query],
-            embeddings=[embedding]
-        )
+        try:
+            embedding = self.get_embedding(query)
+            # Add document to ChromaDB
+            self.collection.add(
+                documents=[response],
+                metadatas=[{"query": query}],
+                ids=[query],
+                embeddings=[embedding]
+            )
+        except Exception as e:
+            print(f"Error adding to ChromaDB: {e}")
 
     def query_db(self, query, top_k=1):
         """
         Queries the ChromaDB collection for semantically similar responses
-        
-        In semantic_cache.py, 'check_cache()':
-        ---------------------
-        Replace the in-memory cosine similarity check with:
-          result = self.persistence.query_db(query)
-          if result:
-              return result
         """
-
-        embedding = self.get_embedding(query)
-
-        # Search based on embedding
-        results = self.collection.query(
-            query_embeddings=[embedding],
-            n_results=top_k
-        )
-
-        if results['documents']:
-            # Return top result
-            return results['documents'][0]
+        try:
+            embedding = self.get_embedding(query)
+            # Search based on embedding
+            results = self.collection.query(
+                query_embeddings=[embedding],
+                n_results=top_k
+            )
+            if results['documents']:
+                # Return top result
+                return results['documents'][0]
+        except Exception as e:
+            print(f"Error querying ChromaDB: {e}")
         
         # If no result is found
         return None
