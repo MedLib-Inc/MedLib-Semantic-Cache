@@ -1,36 +1,22 @@
+import logging
 from .persistence import Chroma
 
 class SemanticCache:
-    def __init__(self, threshold=0.9):
+    def __init__(self, threshold=0.1):
         """
         Initializes the semantic cache with ChromaDB and a similarity threshold
-        
-        Usage in API:
-        -------------
-        Initalize the cache in main FastAPI app or router:
-        
-        from ..cache.semantic_cache import SemanticCache
-
-        semantic_cache = SemanticCache()
         """
-        self.persistence = Chroma()
-        self.threshold = threshold
+        self.persistence = Chroma(threshold=threshold) # Pass threshold to ChromaDB client
 
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'  # Add timestamps
+        )
+        logging.info("SemanticCache initialized.")
+        
     def add_to_cache(self, query, response):
         """
-        Add query and response to cache (temporarily in memory).
-        Later to be swapped out for a persistent database.
-
-        Usage in API:
-        -------------
-        You can use this method in the '/queries/add' endpoint to add query-response pair
-
-        @router.post("/queries/add")
-           async def add_query_response(data: QueryResponse):
-               query = data.query
-               response = data.response
-               semantic_cache.add_to_cache(query, response)
-               # Continue with your logic to store in-memory or persist to file.
+        Add query and response to the persistent cache (ChromaDB).
         """
         # Store in ChromaDB
         self.persistence.add_to_db(query, response)
@@ -40,27 +26,24 @@ class SemanticCache:
         Check if a semantically similar response is in the cache.
         """
         # Query ChromaDB for similar response
-        result = self.persistence.query_db(query)
+        results = self.persistence.query_db(query)
+    
+        if results and results['documents']:
+            top_distance = results['distances'][0][0]
+            logging.info(f"Top result distance for '{query}': {top_distance} (Threshold: {self.persistence.threshold})")
 
-        if result:
-            return result # Return cached response if found
-
-        # Return None if no match is found
+            # Apply threshold comparison (1 - cosine similarity), smaller is more similar
+            if top_distance <= self.persistence.threshold:
+                logging.info(f"Cache hit for query: '{query}'")
+                return results['documents'][0]
+            else:
+                logging.info(f"Cache miss: Distance {top_distance} exceeds threshold.")
         return None
 
     def ask(self, query):
         """
         Main method to handle a query: check cache or return a new response.
         Returns cached response if available, otherwise queries LLM (simulated for now).
-        
-        Usage in API:
-        -------------
-        Call this method in the '/queries/get/{query}' endpoint to handle a query
-
-        @router.get("/queries/get/{query}")
-        async def get_diagnosis(query: str):
-            response = semantic_cache.ask(query)
-            return {"query": query, "diagnosis": response}
         """
         cached_response = self.check_cache(query)
 

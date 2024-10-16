@@ -1,36 +1,56 @@
 import chromadb
 import logging
-
+from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 class Chroma:
-    def __init__(self, collection_name="query_cache", persist_path="./chromadb_storage"):
+    def __init__(self, collection_name="query_cache", persist_path="./chromadb_storage", threshold=0.1):
         """
-        Initilizes the persistent cache
+        Initializes the persistent cache with a ChromaDB collection using cosine similarity.
         """
 
-        # Persistent ChromaDB client, stores data in path
-        self.client = chromadb.PersistentClient(path=persist_path)
+        # Use the Settings object to allow reset and set persist directory
+        settings = Settings(
+            allow_reset=True, 
+            persist_directory=persist_path
+        )
 
-        # Create/load collection
-        self.collection = self.client.get_or_create_collection(collection_name)
+        # Persistent ChromaDB client with configured settings
+        self.client = chromadb.PersistentClient(settings=settings)
+
+        # Create/load collection with cosine similarity as the distance function
+        self.collection = self.client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": "cosine"}  # Ensures cosine similarity is used
+        )
+
+        # Load the embedding model
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
 
-        logging.basicConfig(level=logging.INFO)
+        # Similarity threshold for accepting a cached result
+        self.threshold = threshold
+
+        # Setup logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'  # timestamp and log level
+        )
 
     def get_embedding(self, query):
         """
-        Convert a query to its embedding using SentenceTransformers
+        Convert a query to its embedding using SentenceTransformers.
         """
-        return self.model.encode([query])[0]
-    
+        embedding = self.model.encode([query])[0]
+        logging.info(f"Generated embedding: {embedding[:5]}... for query: '{query}'")
+        return embedding
+
     def add_to_db(self, query, response):
         """
         Adds a query, embedding, and response to the ChromaDB collection.
         """
         try:
             embedding = self.get_embedding(query)
-            logging.info(f"Adding query: {query} with embedding: {embedding}")
+            logging.info(f"Adding query: '{query}' to the database.")
 
             # Add document to ChromaDB
             self.collection.add(
@@ -39,42 +59,46 @@ class Chroma:
                 ids=[query],
                 embeddings=[embedding]
             )
+            logging.info(f"Successfully added query: '{query}' to the database.")
         except Exception as e:
-            logging.error(f"Error adding to ChromaDB: {e}")
+            logging.error(f"Error adding query '{query}' to ChromaDB: {e}")
 
     def query_db(self, query, top_k=1):
         """
-        Queries the ChromaDB collection for semantically similar responses
+        Queries the ChromaDB collection for semantically similar responses.
         """
         try:
             embedding = self.get_embedding(query)
-            logging.info(f"Querying ChromaDB with embedding: {embedding}")
+            logging.info(f"Searching for similar responses for query: '{query}'")
 
             results = self.collection.query(
                 query_embeddings=[embedding],
-                n_results=top_k
+                n_results=top_k,
+                include=["documents", "distances"]
             )
-
             logging.info(f"Query results: {results}")
 
-            if results['documents']:
-                return results['documents'][0]
+            return results
         except Exception as e:
             logging.error(f"Error querying ChromaDB: {e}")
+            return None
 
-        return None
-    
     def clear_db(self):
         """
-        Clears all the entries in the ChromaDB collection
+        Clears the ChromaDB collection by resetting the database and recreating the collection.
         """
         try:
-            self.collection.delete()
-            logging.info("ChromaDB collection cleared.")
+            # Reset the entire client (this deletes all collections)
+            self.client.reset()
+            logging.info("ChromaDB cache reset successfully.")
 
-            # Recreate the collection
-            self.collection = self.client.get_or_create_collection("query_cache")
+            # Recreate the collection after reset
+            self.collection = self.client.get_or_create_collection(
+                name=self.collection.name,
+                metadata={"hnsw:space": "cosine"}
+            )
+            logging.info("Collection recreated after reset.")
         except Exception as e:
-            logging.error(f"Error clearing ChromaDB: {e}")
-            # Propagate error to the API
-            raise e
+            logging.error(f"Error resetting ChromaDB: {e}")
+            raise e  # Ensure the exception propagates to the API
+
