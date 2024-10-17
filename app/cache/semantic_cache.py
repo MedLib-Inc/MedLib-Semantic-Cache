@@ -65,3 +65,11 @@ class SemanticCache:
         Replace this with actual LLM logic in the future.
         """
         return f"Generated response for: {query}"
+
+    def update_size(self, size):
+        """
+        Update size of cache with the inputted size, calls method in persistence
+        to reinitialize the client with the updated size. Unable to change while
+        client is active without unintended consequences.
+        """
+        self.persistence.change_size(size)
