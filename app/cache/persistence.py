@@ -1,19 +1,23 @@
+import gc
 import chromadb
 import logging
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 class Chroma:
-    def __init__(self, collection_name="query_cache", persist_path="./chromadb_storage", threshold=0.1):
+    def __init__(self, collection_name="query_cache", persist_path="./chromadb_storage", size=100, threshold=0.1):
         """
         Initializes the persistent cache with a ChromaDB collection using cosine similarity.
         """
 
         # Use the Settings object to allow reset and set persist directory
         settings = Settings(
-            allow_reset=True, 
-            persist_directory=persist_path
+            allow_reset=True,
+            persist_directory=persist_path,
+            cache_size=size
         )
+
+        self._persist_directory = settings.persist_directory
 
         # Persistent ChromaDB client with configured settings
         self.client = chromadb.PersistentClient(settings=settings)
@@ -103,3 +107,27 @@ class Chroma:
             logging.error(f"Error resetting ChromaDB: {e}")
             raise e  # Ensure the exception propagates to the API
 
+    def configure_threshold(self, threshold):
+        self.threshold = threshold
+
+    def change_size(self, size):
+        persist_path = self._persist_directory
+        collection_name = self.collection.name
+
+        self.client = None
+        gc.collect()
+
+        settings = Settings(
+            allow_reset=True,
+            persist_directory=persist_path,
+            cache_size=size
+        )
+
+        # Persistent ChromaDB client with configured settings
+        self.client = chromadb.PersistentClient(settings=settings)
+
+        # Create/load collection with cosine similarity as the distance function
+        self.collection = self.client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": "cosine"}  # Ensures cosine similarity is used
+        )

@@ -103,3 +103,11 @@ class SemanticCache:
         except Exception as e:
             logging.error(f"Error calling LLM: {e}")
             return f"Error generating response for: {query}"
+
+    def update_size(self, size):
+        """
+        Update size of cache with the inputted size, calls method in persistence
+        to reinitialize the client with the updated size. Unable to change while
+        client is active without unintended consequences.
+        """
+        self.persistence.change_size(size)
