@@ -2,12 +2,12 @@
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from ..cache.persistence import Chroma 
+from ..cache.semantic_cache import SemanticCache
 from ..utility.response_formatter import create_response 
 
 router = APIRouter()
 
-chroma_persistence = Chroma()
+semantic_cache = SemanticCache()
 
 class QueryResponse(BaseModel):
     query: str
@@ -15,7 +15,7 @@ class QueryResponse(BaseModel):
 
 @router.get("/database/get/{query}")
 async def get_database(query: str):
-    result = chroma_persistence.query_db(query)
+    result = semantic_cache.ask(query)
     if result:
         return create_response(status="success", data={"query": query, "diagnosis": result})
     
@@ -27,7 +27,7 @@ async def add_database(data: QueryResponse):
     response = data.response
     
     try:
-        chroma_persistence.add_to_db(query, response)
+        semantic_cache.add_to_cache(query, response)
     except Exception as e:
         return create_response(status="error", message="Failed to add to ChromaDB.")
     
@@ -36,7 +36,7 @@ async def add_database(data: QueryResponse):
 @router.post("/database/clear")
 async def clear_cache():
     try:
-        chroma_persistence.clear_db()
+        semantic_cache.persistence.clear_db()
     except Exception as e:
         return create_response(status="error", message="Failed to clear ChromaDB.")
     
