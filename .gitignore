@@ -29,6 +29,7 @@ build/
 *.spec
 
 # Ignore ChromaDB storage files
+chroma/
 chromadb_storage/
 *.sqlite3
 *.bin

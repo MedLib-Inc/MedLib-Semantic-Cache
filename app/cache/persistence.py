@@ -34,18 +34,19 @@ class Chroma:
         # Similarity threshold for accepting a cached result
         self.threshold = threshold
 
-        # Setup logging
+        # Set up logging globally in the entry point
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s'  # timestamp and log level
+            format='%(asctime)s - %(levelname)s - %(message)s'
         )
+        logging.info("ChromaDB initialized.")
 
     def get_embedding(self, query):
         """
         Convert a query to its embedding using SentenceTransformers.
         """
         embedding = self.model.encode([query])[0]
-        logging.info(f"Generated embedding: {embedding[:5]}... for query: '{query}'")
+        logging.info(f"Generated embedding: {embedding[:3]}... for query: '{query}'")
         return embedding
 
     def add_to_db(self, query, response):
