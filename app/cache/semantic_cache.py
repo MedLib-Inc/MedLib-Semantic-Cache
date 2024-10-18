@@ -32,6 +32,12 @@ class SemanticCache:
         # Store in ChromaDB
         self.persistence.add_to_db(query, response)
 
+    def remove_from_cache(self, query):
+        """
+        Remove query from cache
+        """
+        self.persistence.remove_from_db(query)
+
     def check_cache(self, query):
         """
         Check if a semantically similar response is in the cache.
@@ -103,6 +109,9 @@ class SemanticCache:
         except Exception as e:
             logging.error(f"Error calling LLM: {e}")
             return f"Error generating response for: {query}"
+
+    def update_threshold(self, threshold):
+        self.persistence.configure_threshold(threshold)
 
     def update_size(self, size):
         """
