@@ -68,6 +68,19 @@ class Chroma:
         except Exception as e:
             logging.error(f"Error adding query '{query}' to ChromaDB: {e}")
 
+    def remove_from_db(self, query):
+        """
+        Remove query and its respective attributes by its query id
+        """
+        try:
+            logging.info(f"Removing query: '{query}' to the database.")
+
+            self.collection.delete(ids=[query])
+
+            logging.info(f"Successfully removed query: '{query}' to the database.")
+        except Exception as e:
+            logging.error(f"Error removed query '{query}' to ChromaDB: {e}")
+
     def query_db(self, query, top_k=1):
         """
         Queries the ChromaDB collection for semantically similar responses.
