@@ -1,4 +1,4 @@
-import gc
+import time
 import chromadb
 import logging
 from chromadb.config import Settings
@@ -14,9 +14,9 @@ class Chroma:
         settings = Settings(
             allow_reset=True,
             persist_directory=persist_path,
-            cache_size=size
         )
 
+        self.size = size
         self._persist_directory = settings.persist_directory
 
         # Persistent ChromaDB client with configured settings
@@ -55,18 +55,41 @@ class Chroma:
         """
         try:
             embedding = self.get_embedding(query)
+            current_time = time.time()
             logging.info(f"Adding query: '{query}' to the database.")
+
+            if self.collection.count() >= self.size:
+                self.lru_evict()
 
             # Add document to ChromaDB
             self.collection.add(
                 documents=[response],
-                metadatas=[{"query": query}],
+                metadatas=[{"query": query, "last_access": current_time}],
                 ids=[query],
                 embeddings=[embedding]
             )
             logging.info(f"Successfully added query: '{query}' to the database.")
         except Exception as e:
             logging.error(f"Error adding query '{query}' to ChromaDB: {e}")
+
+    def lru_evict(self):
+        count = self.collection.count()
+        logging.info(f"Cache size exceeded. Current size: {count}, Max size: {self.size}")
+
+        # Fetch all entries and sort by the 'last_access' timestamp
+        results = self.collection.get(include=["metadatas"])
+        items_with_time = [
+            (item['id'], item['metadata']['last_access'])
+            for item in results['metadatas']
+        ]
+        # Sort by access time (ascending order, least recently used first)
+        items_with_time.sort(key=lambda x: x[1])
+
+        # Evict the oldest items
+        num_to_evict = count - self.size
+        evict_ids = [item[0] for item in items_with_time[:num_to_evict]]
+        self.collection.delete(ids=evict_ids)
+        logging.info(f"Evicted {len(evict_ids)} items from cache.")
 
     def remove_from_db(self, query):
         """
@@ -124,23 +147,6 @@ class Chroma:
         self.threshold = threshold
 
     def change_size(self, size):
-        persist_path = self._persist_directory
-        collection_name = self.collection.name
-
-        self.client = None
-        gc.collect()
-
-        settings = Settings(
-            allow_reset=True,
-            persist_directory=persist_path,
-            cache_size=size
-        )
-
-        # Persistent ChromaDB client with configured settings
-        self.client = chromadb.PersistentClient(settings=settings)
-
-        # Create/load collection with cosine similarity as the distance function
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            metadata={"hnsw:space": "cosine"}  # Ensures cosine similarity is used
-        )
+        self.size = size
+        if self.collection.count() >= self.size:
+            self.lru_evict()
