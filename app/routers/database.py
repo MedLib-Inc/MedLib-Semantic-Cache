@@ -2,12 +2,15 @@
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+from ..cache.persistence import ChromaDatabase, LRUCacheManager
 from ..cache.semantic_cache import SemanticCache
 from ..utility.response_formatter import create_response 
 
 router = APIRouter()
 
-semantic_cache = SemanticCache()
+chroma_db = ChromaDatabase()
+lru_cache_manager = LRUCacheManager(chroma_db)
+semantic_cache = SemanticCache(db=chroma_db, cache_manager=lru_cache_manager, threshold=0.15)
 
 class QueryResponse(BaseModel):
     query: str
@@ -36,7 +39,7 @@ async def add_database(data: QueryResponse):
 @router.post("/database/clear")
 async def clear_cache():
     try:
-        semantic_cache.persistence.clear_db()
+        semantic_cache.db.reset()
     except Exception as e:
         return create_response(status="error", message="Failed to clear ChromaDB.")
     
